@@ -1,0 +1,82 @@
+# cd /home/ilham/Documents/python/alpin_opencv_python/julianable
+# docker build --network host -t julianbei/alpine-cv-vi:p3-3.1 -f Dockerfile .
+# docker run -v /home/ilham/Documents/docker-mount:/home --network host -it julianbei/alpine-cv-vi:p3-3.1
+FROM alpine:3.10
+
+RUN echo "**** install Python ****" && \
+    apk add --no-cache python3 && \
+    if [ ! -e /usr/bin/python ]; then ln -sf python3 /usr/bin/python ; fi && \
+    which python && \
+    \
+    echo "**** install pip ****" && \
+    python3 -m ensurepip && \
+    rm -r /usr/lib/python*/ensurepip && \
+    pip3 install --no-cache --upgrade pip setuptools wheel && \
+    if [ ! -e /usr/bin/pip ]; then ln -s pip3 /usr/bin/pip ; fi && \
+    which pip
+
+RUN echo -e 'http://dl-cdn.alpinelinux.org/alpine/edge/testing'>> /etc/apk/repositories
+
+RUN apk --no-cache --update-cache add \
+    gcc gfortran python3-dev \
+    build-base wget cmake musl-dev musl \
+    freetype-dev libpng libpng-dev \
+    openblas-dev unzip libjpeg \
+    libjpeg-turbo-dev gtk+3.0 \
+    gtk+2.0 glib-dev gtk+3.0-dev \
+    gst-plugins-base libdc1394 libdc1394-dev \
+    gst-plugins-base-dev v4l-utils-libs \
+    libtbb libtbb-dev libgphoto2 libgphoto2-dev \
+    v4l-utils-dev ffmpeg pkgconf \
+
+    # A software-based implementation of the codec specified in the emerging JPEG-2000 Part-1 standard (development files)
+    jasper-dev \
+
+    # Provides support for the Tag Image File Format or TIFF (development files)
+    tiff-dev \
+
+    # Libraries for working with WebP images (development files)
+    libwebp-dev \
+
+    # A C language family front-end for LLVM (development files)
+    clang-dev \
+
+    linux-headers && \
+    pip install numpy scipy scikit-learn
+
+ENV CC /usr/bin/clang
+ENV CXX /usr/bin/clang++
+
+ARG OPENCV_VERSION=3.4.7
+
+RUN mkdir -p /opt && cd /opt && \
+  wget https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip && \
+  unzip ${OPENCV_VERSION}.zip && \
+  rm -rf ${OPENCV_VERSION}.zip
+
+RUN mkdir -p /opt/opencv-${OPENCV_VERSION}/build && \
+  cd /opt/opencv-${OPENCV_VERSION}/build && \
+  cmake \
+  -D CMAKE_BUILD_TYPE=RELEASE \
+  -D CMAKE_INSTALL_PREFIX=/usr/local \
+  -D WITH_FFMPEG=NO \
+  -D WITH_IPP=NO \
+  -D WITH_OPENEXR=NO \
+  -D WITH_TBB=NO \
+  -D BUILD_EXAMPLES=NO \
+  -D BUILD_ANDROID_EXAMPLES=NO \
+  -D INSTALL_PYTHON_EXAMPLES=NO \
+  -D BUILD_DOCS=NO \
+  -D BUILD_opencv_python2=NO \
+  -D BUILD_opencv_python3=ON \
+  -D PYTHON3_EXECUTABLE=/usr/bin/python3 \
+  -D PYTHON_EXECUTABLE=/usr/bin/python3 \
+  -D PYTHON_INCLUDE_DIR=/usr/include/python3.7m/ \
+  -D PYTHON_LIBRARY=/usr/lib/libpython3.so \
+  -D PYTHON3_PACKAGES_PATH=/usr/lib/python3.7/site-packages/ \
+  -D PYTHON3_NUMPY_INCLUDE_DIRS=/usr/lib/python3.7/site-packages/numpy/core/include/ \
+  .. && \
+  make VERBOSE=1 && \
+  make && \
+  make install && \
+  rm -rf /opt/opencv-${OPENCV_VERSION}
